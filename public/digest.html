@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="fr" data-bs-theme="dark">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Récap — AI News Radio</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet" />
+    <link href="/styles.css" rel="stylesheet" />
+  </head>
+  <body class="replay-body">
+    <div class="orbs" aria-hidden="true"><span></span><span></span><span></span></div>
+
+    <header class="topbar glass">
+      <div class="brand">
+        <i class="bi bi-graph-up-arrow"></i>
+        <div>
+          <h1 data-i18n="digest.title">Récap</h1>
+          <small data-i18n="digest.subtitle">la mémoire longue : sujets traités, médias cités, rétrospective</small>
+        </div>
+      </div>
+      <div class="d-flex align-items-center gap-2 flex-wrap">
+        <div class="btn-group btn-group-sm lang-toggle" role="group" aria-labelledby="langToggleLabel">
+          <span class="visually-hidden" id="langToggleLabel" data-i18n="nav.lang">Langue de l'interface</span>
+          <button class="btn btn-glass active" type="button" data-lang="fr" lang="fr">FR</button>
+          <button class="btn btn-glass" type="button" data-lang="en" lang="en">EN</button>
+        </div>
+        <span class="mini-stat" data-i18n-attr="title:digest.shows.title" title="Émissions sur la période"><i class="bi bi-collection-play"></i> <span id="digestShows">0</span></span>
+        <span class="mini-stat" data-i18n-attr="title:digest.duration.title" title="Temps d'antenne"><i class="bi bi-stopwatch"></i> <span id="digestMinutes">0 min</span></span>
+        <span class="mini-stat" data-i18n-attr="title:digest.cost.title" title="Coût cumulé de la période"><i class="bi bi-coin"></i> <span id="digestCost">0 $</span></span>
+        <a class="btn btn-glass" href="/replay.html"><i class="bi bi-clock-history"></i> <span data-i18n="nav.replay">Replay</span></a>
+        <a class="btn btn-glass" href="/feed.xml" target="_blank" rel="noreferrer" data-i18n-attr="title:replay.podcast.title" title="Flux podcast (RSS)"><i class="bi bi-rss"></i> Podcast</a>
+        <a class="btn btn-glass" href="/"><i class="bi bi-broadcast-pin"></i> <span data-i18n="digest.back">Antenne</span></a>
+      </div>
+    </header>
+
+    <main class="container-fluid px-3 px-lg-4 pb-5 replay-main">
+      <div class="row g-3 g-lg-4">
+        <!-- ─── Colonne gauche : rétrospective rédigée + journées ─── -->
+        <section class="col-12 col-xl-7">
+          <div class="glass panel">
+            <div class="panel-head">
+              <h2><i class="bi bi-journal-text"></i> <span data-i18n="digest.retro">Rétrospective</span></h2>
+              <span class="badge-count" id="digestRange">—</span>
+            </div>
+
+            <div class="digest-toolbar" id="periodRow">
+              <button class="chip active" data-days="7" type="button" data-i18n="digest.days7">7 jours</button>
+              <button class="chip" data-days="14" type="button" data-i18n="digest.days14">14 jours</button>
+              <button class="chip" data-days="30" type="button" data-i18n="digest.days30">30 jours</button>
+              <span class="ms-auto"></span>
+              <button class="btn btn-primary btn-sm" id="generateBtn" type="button">
+                <i class="bi bi-stars"></i> <span data-i18n="digest.generate">Générer le récapitulatif</span>
+              </button>
+            </div>
+
+            <div class="digest-stats" id="digestStats"></div>
+
+            <div class="mt-3">
+              <div id="digestText" class="digest-text muted-note" data-i18n="digest.none">Aucun récapitulatif pour cette période : clique sur « Générer le récapitulatif » (le modèle rapide s'en charge).</div>
+              <div class="d-flex gap-2 mt-2 align-items-center flex-wrap">
+                <button class="btn btn-glass btn-sm" id="copyBtn" type="button"><i class="bi bi-clipboard"></i> <span data-i18n="digest.copy">Copier</span></button>
+                <span class="small text-secondary" id="digestMeta"></span>
+              </div>
+            </div>
+          </div>
+
+          <div class="glass panel">
+            <div class="panel-head">
+              <h2><i class="bi bi-calendar3"></i> <span data-i18n="digest.daysTitle">Journées de la période</span></h2>
+              <span class="badge-count" id="dayCount">0</span>
+            </div>
+            <div id="digestDays" class="show-list">
+              <p class="muted-note" data-i18n="digest.loading">Chargement…</p>
+            </div>
+          </div>
+        </section>
+
+        <!-- ─── Colonne droite : classements ─── -->
+        <section class="col-12 col-xl-5">
+          <div class="glass panel">
+            <div class="panel-head">
+              <h2><i class="bi bi-tags"></i> <span data-i18n="digest.topics">Sujets les plus traités</span></h2>
+            </div>
+            <div id="digestTopics"></div>
+          </div>
+
+          <div class="glass panel">
+            <div class="panel-head">
+              <h2><i class="bi bi-link-45deg"></i> <span data-i18n="digest.media">Médias les plus cités</span></h2>
+            </div>
+            <div id="digestSources"></div>
+          </div>
+
+          <div class="glass panel">
+            <div class="panel-head">
+              <h2><i class="bi bi-info-circle"></i> <span data-i18n="digest.why">À quoi ça sert</span></h2>
+            </div>
+            <p class="small text-secondary mb-0" data-i18n="digest.whyBody">
+              Les archives sont relues côté serveur : sujets, médias, durées et coûts, sans rien redemander aux flux.
+              Le récapitulatif est rédigé par le <strong>modèle rapide</strong> à partir de ce qui est réellement passé à l'antenne,
+              et conservé dans <code>.data/digest.json</code>. La mémoire anti-redite du direct vit dans <code>.data/played.json</code>.
+            </p>
+          </div>
+        </section>
+      </div>
+    </main>
+
+    <div class="toast-container position-fixed bottom-0 end-0 p-3" id="toasts"></div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script type="module" src="/js/digest.js"></script>
+  </body>
+</html>

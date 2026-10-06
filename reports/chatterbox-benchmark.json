@@ -1,0 +1,21 @@
+{
+  "model": "chatterbox-multilingual-v3",
+  "gpu": "RTX 4060 Ti 16GB",
+  "text": "Bonjour Alex. On continue notre émission : un trou noir se forme quand une étoile massive s’effondre.",
+  "rounds": [
+    {
+      "ms": 24827,
+      "durationMs": 5832,
+      "realTimeFactor": 4.257030178326475,
+      "costUsd": 0,
+      "bytes": 70029
+    },
+    {
+      "ms": 8425,
+      "durationMs": 5880,
+      "realTimeFactor": 1.4328231292517006,
+      "costUsd": 0,
+      "bytes": 70605
+    }
+  ]
+}

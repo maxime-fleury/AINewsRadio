@@ -1,0 +1,21 @@
+{
+  "name": "ainewsradio",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Radio d'actualité générée : RSS + LLM + TTS, avec deux présentateurs et un transcript synchronisé.",
+  "scripts": {
+    "dev": "bun run --watch src/index.ts",
+    "start": "bun run src/index.ts",
+    "typecheck": "tsc --noEmit",
+    "tts:local": ".venv-chatterbox/Scripts/python.exe local-tts/server.py",
+    "test": "bun test"
+  },
+  "dependencies": {
+    "edge-tts-universal": "^1.4.0",
+    "fast-xml-parser": "^5.11.2"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "typescript": "^5.9.3"
+  }
+}

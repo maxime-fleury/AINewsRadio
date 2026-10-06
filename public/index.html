@@ -1,0 +1,538 @@
+<!doctype html>
+<html lang="fr" data-bs-theme="dark">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>AI News Radio</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet" />
+    <link href="/styles.css" rel="stylesheet" />
+  </head>
+  <body class="app-body">
+    <div class="orbs" aria-hidden="true"><span></span><span></span><span></span></div>
+
+    <a class="skip-link" href="#mainContent" data-i18n="nav.skip">Aller au contenu</a>
+    <header class="topbar glass">
+      <div class="d-flex align-items-center gap-3">
+        <div class="brand">
+          <i class="bi bi-broadcast-pin"></i>
+          <div>
+            <h1 data-i18n="app.title">AI News Radio</h1>
+            <small data-i18n="app.tagline">news → script → voix, en continu</small>
+          </div>
+        </div>
+      </div>
+      <div class="d-flex align-items-center gap-2 flex-wrap">
+        <span class="status-pill" id="statusPill" role="status"><span class="dot"></span><span id="statusText">à l'arrêt</span></span>
+        <div class="btn-group btn-group-sm lang-toggle" role="group" aria-labelledby="langToggleLabel">
+          <span class="visually-hidden" id="langToggleLabel" data-i18n="nav.lang">Langue de l'interface</span>
+          <button class="btn btn-glass active" type="button" data-lang="fr" lang="fr">FR</button>
+          <button class="btn btn-glass" type="button" data-lang="en" lang="en">EN</button>
+        </div>
+        <details class="session-summary">
+          <summary><i class="bi bi-activity" aria-hidden="true"></i> <span data-i18n="stat.summary">Activité & coûts</span></summary>
+          <div class="session-popover">
+        <span class="mini-stat" data-i18n-attr="title:stat.cost.title" title="Coût cumulé estimé de la session"><i class="bi bi-coin"></i> <span id="costTotal">0,0000 $</span></span>
+        <span class="mini-stat" data-i18n-attr="title:stat.rate.title" title="Coût LLM + TTS rapporté à l'audio produit, après une minute"><span id="costRate">— $/min · — $/h</span></span>
+        <span class="mini-stat" data-i18n-attr="title:stat.segments.title" title="Bulletins produits"><i class="bi bi-collection-play"></i> <span id="statSegments">0</span></span>
+        <span class="mini-stat" data-i18n-attr="title:stat.minutes.title" title="Audio généré"><i class="bi bi-stopwatch"></i> <span id="statMinutes">0 min</span></span>
+          </div>
+        </details>
+        <a class="btn btn-glass" href="/replay.html" id="replayLink" data-i18n-attr="title:nav.replay.title" title="Réécouter les émissions archivées du jour">
+          <i class="bi bi-clock-history"></i> <span data-i18n="nav.replay">Replay</span> <span class="badge-count" id="archiveBadge">0</span>
+        </a>
+        <a class="btn btn-glass" href="/digest.html" data-i18n-attr="title:nav.digest.title" title="Les sujets traités ces derniers jours, et le récapitulatif de la période">
+          <i class="bi bi-graph-up-arrow"></i> <span data-i18n="nav.digest">Récap</span>
+        </a>
+        <button class="btn btn-glass" id="settingsBtn" data-bs-toggle="offcanvas" data-bs-target="#settings">
+          <i class="bi bi-sliders2"></i> <span data-i18n="nav.settings">Réglages</span>
+        </button>
+      </div>
+    </header>
+
+    <main class="container-fluid px-3 px-lg-4 pb-5" id="mainContent" tabindex="-1">
+      <div class="row g-3 g-lg-4">
+        <!-- ─── Colonne gauche : la console d'antenne ─── -->
+        <section class="col-12 col-xl-3 console-column">
+          <div class="glass panel">
+            <div class="panel-head">
+              <h2><i class="bi bi-mic"></i> <span data-i18n="console.title">Console d'antenne</span></h2>
+            </div>
+
+            <div class="now-playing">
+              <div class="eq" id="eq" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+              <div class="np-text">
+                <div class="np-title" id="consoleState" data-i18n="console.idle">Hors antenne</div>
+                <div class="np-sub" data-i18n="console.idle.hint">Choisis un sujet, puis lance l’écoute.</div>
+              </div>
+            </div>
+
+            <div class="stage-line" id="stageLine"><span class="muted" data-i18n="console.waiting">En attente…</span></div>
+          </div>
+
+          <div class="glass panel">
+            <div class="panel-head">
+              <h2><i class="bi bi-sliders"></i> <span data-i18n="live.title">Direct</span></h2>
+            </div>
+            <label class="form-label small" for="radioMode" data-i18n="live.mode">Mode d’antenne</label>
+            <select class="form-select form-select-sm mb-2" id="radioMode">
+              <option value="news" data-i18n="live.mode.news">Actualité — sources récentes</option>
+              <option value="explore" data-i18n="live.mode.explore">Exploration — sans recherche</option>
+              <option value="hybrid" data-i18n="live.mode.hybrid">Hybride — news puis approfondissement</option>
+            </select>
+            <label class="form-label small" for="topicInput" data-i18n="live.topic">Sujet libre</label>
+            <div class="input-group input-group-sm mb-2"><input id="topicInput" class="form-control" data-i18n-attr="placeholder:live.topic.placeholder" placeholder="Ex. les trous noirs" /><button id="topicApply" class="btn btn-glass" data-i18n="live.topic.apply">Choisir</button></div>
+            <label class="form-label small" for="cadenceQuick" data-i18n="live.cadence">Durée cible d’un segment</label>
+            <select class="form-select form-select-sm" id="cadenceQuick"></select>
+            <details class="waiting-music mt-3">
+              <summary><i class="bi bi-music-note-beamed" aria-hidden="true"></i> <span data-i18n="music.library">Musique pendant la préparation</span></summary>
+              <div class="mt-3">
+                <button class="btn btn-glass btn-sm w-100" id="musicChoose" type="button" disabled><i class="bi bi-folder2-open" aria-hidden="true"></i> <span data-i18n="music.choose">Choisir un dossier audio</span></button>
+                <input id="musicDirectory" class="d-none" type="file" webkitdirectory multiple accept="audio/*,.mp3,.ogg,.m4a,.wav,.flac,.aac" />
+                <p class="form-text" data-i18n="music.chooseHint">MP3, OGG, M4A, WAV, FLAC ou AAC selon ton navigateur. Lecture aléatoire pendant l’attente, coupée dès que les voix sont prêtes. Aucun fichier envoyé au serveur.</p>
+                <div class="small" id="musicLibraryInfo" role="status" data-i18n="music.browser.none">Aucun dossier choisi dans ce navigateur.</div>
+                <div class="small mt-2" id="musicNow" role="status"></div>
+                <button class="btn btn-link btn-sm px-0" id="musicClear" type="button" hidden data-i18n="music.browser.clear">Revenir au dossier serveur / aux ambiances</button>
+                <button class="btn btn-link btn-sm px-0" id="musicServerSettings" type="button" data-bs-toggle="offcanvas" data-bs-target="#settings" data-i18n="music.serverSettings">Configurer un dossier permanent</button>
+              </div>
+            </details>
+            <details class="advanced-controls mt-3">
+              <summary data-i18n="live.advanced">Préparation & conversation</summary>
+              <div class="mt-3">
+            <label class="form-label small" for="searchInterval" data-i18n="live.refresh">Actualiser les recherches</label>
+            <select class="form-select form-select-sm mb-2" id="searchInterval"><option value="60" data-i18n="live.refresh.60">Chaque minute</option><option value="300" data-i18n="live.refresh.300">Toutes les 5 minutes</option><option value="600" data-i18n="live.refresh.600">Toutes les 10 minutes</option><option value="1800" data-i18n="live.refresh.1800">Toutes les 30 minutes</option><option value="3600" data-i18n="live.refresh.3600">Toutes les heures</option></select>
+            <div class="d-flex justify-content-between small text-secondary mt-2">
+              <span><span data-i18n="console.queue">File d'attente :</span> <strong id="queueDepth">0</strong></span>
+              <span id="engineLabel">—</span>
+            </div>
+            <div class="queue-list" id="queueList"></div>
+            <div class="small mt-2" id="generationInfo" data-i18n="console.gen.idle">Aucune génération en cours</div>
+            <div class="small mt-2" id="priorityInfo" data-i18n="console.priority.none">Aucune demande prioritaire</div>
+            <div class="small text-secondary mt-2" id="conversationInfo">0 passage entendu en contexte</div>
+            <button class="btn btn-glass btn-sm mt-2" id="conversationClear" data-i18n="console.forget">Oublier la conversation</button>
+              </div>
+            </details>
+          </div>
+        </section>
+
+        <!-- ─── Colonne centrale : transcript + question ─── -->
+        <section class="col-12 col-xl-6 listening-column">
+          <div class="glass panel transcript-panel">
+            <div class="panel-head">
+              <h2><i class="bi bi-card-text"></i> <span data-i18n="transcript.title">Transcript en direct</span></h2>
+              <div class="badges" id="nowBadges"></div>
+            </div>
+            <div class="listen-welcome" id="listenWelcome">
+              <div class="welcome-symbol" aria-hidden="true"><i class="bi bi-broadcast-pin"></i></div>
+              <span class="welcome-kicker" data-i18n="welcome.kicker">Ta radio, tes sujets</span>
+              <h3 data-i18n="welcome.title">L’actualité s’écoute. La curiosité aussi.</h3>
+              <p data-i18n="welcome.body">Choisis un sujet ci-dessous ou saisis le tien dans Direct. Les présentateurs prennent le relais.</p>
+              <div class="welcome-topic"><i class="bi bi-broadcast" aria-hidden="true"></i> <span id="welcomeTopic">—</span></div>
+              <button class="btn btn-primary welcome-play" id="welcomePlay" type="button" disabled><i class="bi bi-play-fill" aria-hidden="true"></i> <span id="welcomePlayLabel" data-i18n="welcome.loading">Connexion…</span></button>
+              <p class="welcome-note" id="welcomeNote" role="status" data-i18n="welcome.loading">Connexion…</p>
+              <div class="startup-error" id="startupError" role="alert" hidden>
+                <p id="startupErrorText"></p>
+                <button class="btn btn-glass" id="startupRetry" type="button" data-i18n="welcome.retry">Réessayer la connexion</button>
+              </div>
+            </div>
+            <div class="transcript d-none" id="transcript"></div>
+            <div class="transcript-foot small text-secondary">
+              <span id="syncInfo" data-i18n="transcript.none">Aucun segment</span>
+              <span class="ms-auto" data-i18n="transcript.ai">Texte généré par IA</span>
+            </div>
+          </div>
+
+          <div class="glass panel ask-panel">
+            <div class="panel-head">
+              <h2><i class="bi bi-chat-square-dots"></i> <span data-i18n="ask.title">Interroger l'antenne</span></h2>
+              <button class="btn btn-link btn-sm p-0" id="chipEditorBtn" data-bs-toggle="offcanvas" data-bs-target="#settings" data-bs-target-tab="#tab-sources" data-i18n="ask.topics">
+                gérer les sujets
+              </button>
+            </div>
+
+            <div class="chips" id="chipRow"></div>
+
+            <label class="form-label small" for="questionTiming" data-i18n="ask.timing">Questions et débats</label>
+            <select class="form-select form-select-sm mb-2" id="questionTiming"><option value="after" data-i18n="ask.timing.after">Après le passage en cours</option><option value="now" data-i18n="ask.timing.now">Interrompre immédiatement</option></select>
+            <label class="visually-hidden" for="questionInput" data-i18n="ask.aria">Question à l’antenne</label>
+            <div class="ask-row">
+              <textarea class="form-control" id="questionInput" rows="2" data-i18n-attr="placeholder:ask.placeholder" placeholder="Posez une question : « Où en est l'inflation en France ? », « Que dit la presse sur les JO ? » — Entrée pour envoyer"></textarea>
+              <button class="btn btn-glass debate" id="debateBtn" disabled aria-describedby="askHint" data-i18n-attr="title:ask.debate.title" title="Lancer un débat contradictoire entre les deux présentateurs (ta question ou le sujet sélectionné)">
+                <i class="bi bi-lightning-charge-fill"></i> <span data-i18n="ask.debate">Débat</span>
+              </button>
+              <button class="btn btn-primary send" id="askBtn" disabled data-i18n-attr="aria-label:ask.send, title:ask.send.title" aria-label="Envoyer la question" title="Chercher et répondre à l'antenne">
+                <i class="bi bi-send-fill"></i>
+              </button>
+            </div>
+            <div class="small text-secondary mt-2" id="askHint" data-i18n="ask.hint">
+              La question est transformée en recherche, les articles trouvés servent de source, puis la réponse part à l'antenne.
+            </div>
+          </div>
+        </section>
+
+        <!-- ─── Colonne droite : news & recherches ─── -->
+        <section class="col-12 col-xl-3 sources-column">
+          <div class="glass panel news-panel">
+            <div class="panel-head">
+              <h2><i class="bi bi-newspaper"></i> <span data-i18n="news.title">News &amp; recherches</span></h2>
+              <span class="badge-count" id="newsCount">0</span>
+            </div>
+            <div class="filter-row btn-group btn-group-sm" role="group" id="newsFilter">
+              <button class="btn btn-glass active" data-filter="all" data-i18n="news.filter.all">Tout</button>
+              <button class="btn btn-glass" data-filter="news" data-i18n="news.filter.news">Bulletins</button>
+              <button class="btn btn-glass" data-filter="question" data-i18n="news.filter.question">Questions</button>
+              <button class="btn btn-glass" data-filter="debate" data-i18n="news.filter.debate">Débats</button>
+            </div>
+            <div class="news-list" id="newsList">
+              <p class="muted-note" data-i18n="news.empty">Les bulletins et les recherches effectuées apparaîtront ici, avec leurs sources.</p>
+            </div>
+          </div>
+        </section>
+      </div>
+    </main>
+
+    <!-- ─── Barre de lecture (même lecteur que le replay) ─── -->
+    <div class="player-bar glass" id="livePlayerBar">
+      <button class="btn btn-primary btn-play-sm" id="playBtn" type="button" disabled data-i18n-attr="aria-label:play.toggle, title:play.toggle.title" aria-label="Lecture / Pause" title="Play / Pause">
+        <i class="bi bi-play-fill" id="playIcon"></i>
+      </button>
+      <div class="pb-info">
+        <div class="np-title" id="nowTitle" data-i18n="console.idle">Hors antenne</div>
+        <div class="np-sub" id="nowSub" data-i18n="play.idle">Appuyez sur Play pour lancer le direct.</div>
+      </div>
+      <div class="pb-timeline">
+        <input type="range" class="form-range seek" id="seekBar" data-i18n-attr="aria-label:play.seek" aria-label="Position de lecture" min="0" max="1000" value="0" step="1" disabled />
+        <div class="d-flex justify-content-between time-row">
+          <span id="curTime">0:00</span>
+          <span id="countdown" class="countdown"></span>
+          <span id="durTime">0:00</span>
+        </div>
+      </div>
+      <div class="pb-actions">
+        <button class="btn btn-glass btn-sm" id="backBtn" type="button" disabled data-i18n-attr="title:play.back" title="Reculer de 15 s"><i class="bi bi-arrow-counterclockwise"></i> 15 s</button>
+        <button class="btn btn-glass btn-sm" id="fwdBtn" type="button" disabled data-i18n-attr="title:play.forward" title="Avancer de 15 s"><i class="bi bi-arrow-clockwise"></i> 15 s</button>
+        <button class="btn btn-glass btn-sm" id="skipBtn" type="button" disabled data-i18n-attr="aria-label:play.skip, title:play.skip" title="Bulletin suivant"><i class="bi bi-skip-forward-fill"></i></button>
+        <button class="btn btn-glass btn-sm" id="stopBtn" type="button" disabled data-i18n-attr="aria-label:play.stop, title:play.stop" title="Arrêter (décharge la file)"><i class="bi bi-stop-fill"></i></button>
+        <select class="form-select form-select-sm speed" id="liveSpeed" data-i18n-attr="aria-label:play.speed, title:play.speed" title="Vitesse de lecture">
+          <option value="0.75">0,75×</option>
+          <option value="1" selected>1×</option>
+          <option value="1.25">1,25×</option>
+          <option value="1.5">1,5×</option>
+          <option value="2">2×</option>
+        </select>
+        <div class="volume">
+          <button class="btn btn-glass btn-sm mute-button" id="muteBtn" type="button" aria-pressed="false" data-i18n-attr="aria-label:play.mute, title:play.mute" aria-label="Couper ou rétablir le son" title="Couper ou rétablir le son"><i class="bi bi-volume-up" id="muteIcon" aria-hidden="true"></i></button>
+          <input type="range" class="form-range" id="volume" data-i18n-attr="aria-label:play.volume" aria-label="Volume" min="0" max="1" step="0.01" value="0.9" />
+        </div>
+      </div>
+    </div>
+
+    <!-- ─── Réglages ─── -->
+    <div class="offcanvas offcanvas-end glass settings" tabindex="-1" id="settings" aria-labelledby="settingsLabel">
+      <div class="offcanvas-header">
+        <h5 class="offcanvas-title" id="settingsLabel"><i class="bi bi-sliders2"></i> <span data-i18n="settings.title">Réglages</span></h5>
+        <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-i18n-attr="aria-label:settings.close" aria-label="Fermer"></button>
+      </div>
+      <div class="offcanvas-body">
+        <nav class="nav nav-pills pills flex-wrap mb-3" id="settingsTabs" role="tablist">
+          <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-models" type="button" data-i18n="settings.tab.models">Modèles</button>
+          <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-voice" type="button" data-i18n="settings.tab.voice">Équipe &amp; voix</button>
+          <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-sources" type="button" data-i18n="settings.tab.sources">Sources</button>
+          <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-usage" type="button" data-i18n="settings.tab.usage">Session</button>
+        </nav>
+        <div class="tab-content">
+          <!-- Modèles -->
+          <div class="tab-pane fade show active" id="tab-models">
+            <label class="form-label" for="keyInput" data-i18n="models.key">Clé API OpenRouter</label>
+            <div class="input-group input-group-sm">
+              <input type="password" class="form-control" id="keyInput" placeholder="sk-or-v1-…" autocomplete="off" />
+              <button class="btn btn-glass" id="keySaveBtn" type="button" data-i18n="models.key.save">Enregistrer</button>
+              <button class="btn btn-glass" id="keyCheckBtn" type="button" data-i18n="models.key.test">Tester</button>
+            </div>
+            <div class="form-text" id="keyState" data-i18n="models.key.none">Aucune clé : la radio lit les titres bruts. Les questions libres et les résumés nécessitent une clé.</div>
+
+            <hr />
+            <label class="form-label" for="llmSearch" data-i18n="models.llm">Modèle de langage (rédaction &amp; réponses)</label>
+            <input type="search" class="form-control form-control-sm mb-2" id="llmSearch" data-i18n-attr="placeholder:models.llm.placeholder" placeholder="rechercher : gemini, gpt-oss, free…" />
+            <select class="form-select form-select-sm" id="llmSelect" size="8"></select>
+            <div class="form-text" id="llmPrice">—</div>
+            <div class="d-flex gap-2 mt-2">
+              <button class="btn btn-glass btn-sm" id="llmCheap" type="button" data-i18n="models.llm.cheap">Le moins cher</button>
+              <button class="btn btn-glass btn-sm" id="llmFree" type="button" data-i18n="models.llm.free">Gratuits</button>
+            </div>
+
+            <hr />
+            <label class="form-label" for="llmSelectFast" data-i18n="models.fast">Modèle des tâches rapides (optionnel)</label>
+            <select class="form-select form-select-sm" id="llmSelectFast" size="5"></select>
+            <div class="form-text" id="llmFastPrice">—</div>
+          </div>
+
+          <!-- Équipe & voix -->
+          <div class="tab-pane fade" id="tab-voice">
+            <label class="form-label" for="humor" data-i18n="voice.humor">Humour</label><input id="humor" class="form-range" type="range" min="0" max="3" step="1" />
+            <label class="form-label" for="disagreement" data-i18n="voice.disagreement">Désaccord (jamais sur des faits établis)</label><input id="disagreement" class="form-range" type="range" min="0" max="3" step="1" />
+            <label class="form-label" for="technicality" data-i18n="voice.technicality">Technicité</label><input id="technicality" class="form-range" type="range" min="0" max="3" step="1" />
+            <label class="form-label" for="replyLength" data-i18n="voice.replyLength">Longueur des répliques (1 à 4 phrases)</label><input id="replyLength" class="form-range" type="range" min="0" max="3" step="1" />
+            <label class="form-label" for="addressFrequency" data-i18n="voice.address">Interpellations de l’auditeur (0 à 3 par segment)</label><input id="addressFrequency" class="form-range" type="range" min="0" max="3" step="1" />
+            <hr />
+            <label class="form-label" data-i18n="voice.hosts">Présentateurs à l'antenne</label>
+            <div class="btn-group btn-group-sm w-100" id="hostCountGroup" role="group">
+              <button type="button" class="btn btn-glass" data-count="1"><i class="bi bi-person"></i> <span data-i18n="voice.one">1 présentateur</span></button>
+              <button type="button" class="btn btn-glass" data-count="2"><i class="bi bi-people"></i> <span data-i18n="voice.two">2 présentateurs</span></button>
+            </div>
+            <div class="form-text mb-2" data-i18n="voice.hosts.hint">Chaque présentateur a sa personnalité et sa propre voix de synthèse.</div>
+
+            <label class="form-label mt-2" for="duoPreset" data-i18n="voice.duo">Duo prêt à l'emploi</label>
+            <select class="form-select form-select-sm" id="duoPreset">
+              <option value="" data-i18n="voice.duo.placeholder">Choisir un duo…</option>
+            </select>
+            <div class="form-text mb-2" data-i18n="voice.duo.hint">Remplit d'un coup les deux fiches (prénoms, personnalités, voix).</div>
+
+            <div id="hostsEditor"></div>
+
+            <hr />
+            <div class="d-flex align-items-center justify-content-between">
+              <label class="form-label mb-0" data-i18n="voice.templates">Mes gabarits de présentateurs</label>
+              <span class="badge-count" id="templateCount">0</span>
+            </div>
+            <div id="templateList" class="template-list"></div>
+            <div class="form-text mb-2" data-i18n="voice.templates.hint">
+              Écris une personnalité, donne-lui un prénom et un genre (pour la voix), puis enregistre-la : elle rejoint la liste des gabarits choisissables ci-dessus.
+            </div>
+
+            <div class="template-form">
+              <div class="row g-2">
+                <div class="col-8"><input class="form-control form-control-sm" id="tplLabel" data-i18n-attr="placeholder:voice.tpl.label" placeholder="Libellé du gabarit (ex. « Provocateur »)" /></div>
+                <div class="col-4">
+                  <select class="form-select form-select-sm" id="tplGender" data-i18n-attr="title:voice.tpl.gender" title="Genre de la voix suggérée">
+                    <option value="F" data-i18n="voice.tpl.genderF">Voix (F)</option>
+                    <option value="H" data-i18n="voice.tpl.genderH">Voix (H)</option>
+                  </select>
+                </div>
+              </div>
+              <div class="row g-2 mt-1">
+                <div class="col-6"><input class="form-control form-control-sm" id="tplNameFr" placeholder="Prénom (FR)" /></div>
+                <div class="col-6"><input class="form-control form-control-sm" id="tplNameEn" data-i18n-attr="placeholder:voice.tpl.nameEn" placeholder="First name (EN, optionnel)" /></div>
+              </div>
+              <textarea class="form-control form-control-sm mt-2" id="tplPersonaFr" rows="3" data-i18n-attr="placeholder:voice.tpl.personaFr" placeholder="Personnalité (FR) : ton, tics de langage, rôle dans le duo…"></textarea>
+              <textarea class="form-control form-control-sm mt-2" id="tplPersonaEn" rows="2" data-i18n-attr="placeholder:voice.tpl.personaEn" placeholder="Personality (EN, optionnel)"></textarea>
+              <div class="d-flex gap-2 mt-2">
+                <button class="btn btn-primary btn-sm" id="tplSaveBtn" type="button"><i class="bi bi-bookmark-plus"></i> <span data-i18n="voice.tpl.save">Enregistrer le gabarit</span></button>
+                <button class="btn btn-glass btn-sm" id="tplResetBtn" type="button"><i class="bi bi-eraser"></i> <span data-i18n="voice.tpl.reset">Vider</span></button>
+              </div>
+              <div class="form-text" id="tplState" data-i18n="voice.tpl.none">Aucun gabarit en cours d'édition.</div>
+            </div>
+
+            <hr />
+            <label class="form-label" data-i18n="team.title">Équipe : import / export JSON</label>
+            <div class="d-flex gap-2">
+              <a class="btn btn-glass btn-sm" id="teamExportBtn" href="/api/team/export"><i class="bi bi-download"></i> <span data-i18n="team.export">Exporter l'équipe</span></a>
+              <button class="btn btn-glass btn-sm" id="teamImportBtn" type="button"><i class="bi bi-upload"></i> <span data-i18n="team.import">Importer un JSON</span></button>
+              <input type="file" id="teamImportFile" accept="application/json,.json" class="d-none" />
+            </div>
+            <div class="form-text" id="teamState" data-i18n="team.hint">
+              Le fichier exporté contient les deux fiches présentateurs, l'auditeur et tes gabarits persos — de quoi retrouver la même équipe ailleurs.
+            </div>
+
+            <hr />
+            <label class="form-label" data-i18n="listener.title">L'auditeur qui écrit</label>
+            <div class="row g-2">
+              <div class="col-4"><input class="form-control form-control-sm" id="listenerName" data-i18n-attr="placeholder:listener.name" placeholder="Prénom" /></div>
+              <div class="col-8"><input class="form-control form-control-sm" id="listenerPersona" data-i18n-attr="placeholder:listener.persona" placeholder="Profil de l'auditeur" /></div>
+            </div>
+            <div class="form-check form-switch mt-2">
+              <input class="form-check-input" type="checkbox" id="tutoiement" />
+              <label class="form-check-label" for="tutoiement" data-i18n="listener.tutoiement">Tutoyer l'auditeur (obligatoire, jamais de vouvoiement)</label>
+            </div>
+            <div class="form-text" data-i18n="listener.hint">Les présentateurs interpellent l'auditeur par son prénom et lui parlent directement, en le tutoyant.</div>
+
+            <hr />
+            <label class="form-label" for="ttsProvider" data-i18n="tts.engine">Moteur de synthèse</label>
+            <select class="form-select form-select-sm" id="ttsProvider">
+              <option value="local" data-i18n="tts.local">Chatterbox Multilingual V3 — local GPU, gratuit</option>
+              <option value="edge" data-i18n="tts.edge">Edge TTS — gratuit, timings mot à mot</option>
+              <option value="openrouter" data-i18n="tts.openrouter">OpenRouter — modèles TTS facturés</option>
+            </select>
+
+            <div class="form-check form-switch mt-2"><input id="ttsFallback" type="checkbox" class="form-check-input" /><label for="ttsFallback" class="form-check-label" data-i18n="tts.fallback">Activer le TTS de secours, puis Edge gratuit</label></div>
+            <label class="form-label mt-2" for="ttsFallbackModel" data-i18n="tts.fallbackModel">Modèle TTS de secours</label><select id="ttsFallbackModel" class="form-select form-select-sm"></select>
+            <div class="form-text" data-i18n="tts.fallbackHint">Fish gratuit ne fournit pas de catalogue de voix : deux timbres distincts ne sont pas garantis. Kokoro ne propose qu’une voix française.</div>
+            <div id="localBlock" class="d-none">
+              <div class="form-text" id="localTtsState" data-i18n="tts.localState">Vérification du moteur local…</div>
+              <button id="localCheck" class="btn btn-glass btn-sm mt-2" data-i18n="tts.localCheck">Vérifier Chatterbox</button>
+              <label class="form-label mt-2" for="localExaggeration" data-i18n="tts.localExaggeration">Expressivité locale</label><input id="localExaggeration" class="form-range" type="range" min="0" max="1" step="0.1" />
+              <p class="form-text" data-i18n="tts.localHint">Références vocales WAV de 3 à 30 s, enregistrées localement. Utilise des voix dont tu as l’autorisation. Sans références, les deux présentateurs partagent la voix par défaut.</p>
+              <label class="form-label" for="voiceRef1" data-i18n="tts.localRef1">Voix du présentateur 1</label><input id="voiceRef1" class="form-control form-control-sm" type="file" accept=".wav,audio/wav" />
+              <label class="form-label mt-2" for="voiceRef2" data-i18n="tts.localRef2">Voix du présentateur 2</label><input id="voiceRef2" class="form-control form-control-sm" type="file" accept=".wav,audio/wav" />
+            </div>
+            <div id="edgeBlock">
+              <div class="form-text" id="voiceInfo" data-i18n="tts.edgeInfo">Voix Microsoft Edge : gratuites, sans clé, avec horodatage des mots.</div>
+            </div>
+
+            <div id="orBlock" class="d-none">
+              <label class="form-label mt-3" for="ttsModel" data-i18n="tts.model">Modèle TTS</label>
+              <select class="form-select form-select-sm" id="ttsModel" size="8"></select>
+              <div class="form-text" id="ttsPrice">—</div>
+              <div class="form-text" data-i18n="tts.modelHint">En mode duo, les deux voix sont prises dans la liste du modèle (la seconde est choisie automatiquement, modifiable via les présentateurs).</div>
+            </div>
+
+            <label class="form-label mt-3" for="ttsSpeed"><span data-i18n="tts.speed">Débit :</span> <span id="ttsSpeedLabel">1.05×</span></label>
+            <input type="range" class="form-range" id="ttsSpeed" min="0.6" max="1.6" step="0.05" />
+
+            <div class="d-flex gap-2 mt-2">
+              <button class="btn btn-glass btn-sm" id="previewBtn" type="button"><i class="bi bi-play-circle"></i> <span data-i18n="tts.preview">Tester la voix</span></button>
+              <button class="btn btn-glass btn-sm" id="compareBtn" type="button" data-bs-toggle="modal" data-bs-target="#compareModal">
+                <i class="bi bi-bar-chart-line"></i> <span data-i18n="tts.compare">Comparer les TTS</span>
+              </button>
+            </div>
+            <div class="form-text mt-2" data-i18n="tts.compareHint">
+              Comparaison à l'écoute sur une phrase type : latence, taille, coût estimé pour 1 000 caractères.
+            </div>
+          </div>
+
+          <!-- Sources -->
+          <div class="tab-pane fade" id="tab-sources">
+            <label class="form-label" for="cadenceSelect" data-i18n="sources.cadence">Durée cible d’un segment</label>
+            <select class="form-select form-select-sm" id="cadenceSelect"></select>
+            <div class="form-text" data-i18n="sources.cadence.hint">Durée cible d'un segment : le script est calibré pour être lu en environ ce temps.</div>
+
+            <div class="row g-2 mt-3">
+              <div class="col-6">
+                <label class="form-label" for="maxSources" data-i18n="sources.maxSources">Sources citées</label>
+                <input type="number" class="form-control form-control-sm" id="maxSources" min="1" max="12" />
+              </div>
+              <div class="col-6">
+                <label class="form-label" for="prefetch" data-i18n="sources.prefetch">Segments d'avance</label>
+                <input type="number" class="form-control form-control-sm" id="prefetch" min="0" max="3" />
+              </div>
+            </div>
+
+            <label class="form-label mt-3" for="localeSelect" data-i18n="sources.locale">Langue de l'émission</label>
+            <select class="form-select form-select-sm" id="localeSelect"></select>
+            <div class="form-text" id="localeHint" data-i18n="sources.locale.hint">Français ou anglais : la langue pilote l'interface, les sources interrogées, les prompts des présentateurs et les voix proposées.</div>
+
+            <div class="form-check form-switch mt-3">
+              <input class="form-check-input" type="checkbox" id="googleNews" />
+              <label class="form-check-label" for="googleNews" data-i18n="sources.googleNews">Interroger Google News (recherches par mot-clé)</label>
+            </div>
+            <div class="form-check form-switch">
+              <input class="form-check-input" type="checkbox" id="deepRead" />
+              <label class="form-check-label" for="deepRead" data-i18n="sources.deepRead">Lire les articles complets (plus lent, plus précis)</label>
+            </div>
+            <div class="form-check form-switch">
+              <input class="form-check-input" type="checkbox" id="archive" />
+              <label class="form-check-label" for="archive" data-i18n="sources.archive">Archiver chaque émission sur le disque</label>
+            </div>
+            <div class="form-check form-switch">
+              <input class="form-check-input" type="checkbox" id="knowledge" />
+              <label class="form-check-label" for="knowledge" data-i18n="sources.knowledge">Sans dépêche, répondre de mémoire (culture générale)</label>
+            </div>
+            <div class="form-check form-switch">
+              <input class="form-check-input" type="checkbox" id="newsMemory" />
+              <label class="form-check-label" for="newsMemory" data-i18n="sources.newsMemory">Ne pas rediffuser une histoire déjà passée aujourd'hui</label>
+            </div>
+            <div class="form-text d-flex align-items-center gap-2 flex-wrap">
+              <span id="memoryInfo">—</span>
+              <button class="btn btn-glass btn-sm py-0" id="memoryClearBtn" type="button"><i class="bi bi-eraser"></i> <span data-i18n="sources.memoryClear">Effacer la mémoire</span></button>
+            </div>
+            <details class="memory-today" id="memoryToday">
+              <summary>
+                <span data-i18n="sources.memory.list">Sujets passés aujourd'hui</span>
+                <span class="memory-count" id="memoryCount">0</span>
+              </summary>
+              <ul class="memory-list" id="memoryList"></ul>
+            </details>
+            <div class="form-text" data-i18n="sources.knowledgeHint">
+              Un sujet libre ou une question hors actualité est alors traité par le modèle à partir de ses connaissances : il le dit à l'antenne et n'invente ni chiffre ni date.
+            </div>
+            <div class="form-text" id="archiveInfo">—</div>
+
+            <hr />
+            <label class="form-label" for="musicMood" data-i18n="music.mood">Fond musical d'attente</label>
+            <select class="form-select form-select-sm" id="musicMood"></select>
+            <div class="form-text" data-i18n="music.mood.hint">Le jingle d'ouverture passe au démarrage d'une émission, puis le fond n'arrive que si le tampon est vide, sous l'annonce, et s'arrête dès qu'un segment démarre. « Aucune musique » coupe les deux. Jamais mélangé à l'audio archivé ni au flux podcast.</div>
+
+            <label class="form-label mt-3" for="musicFolder" data-i18n="music.folder">Dossier de musique (optionnel)</label>
+            <input class="form-control form-control-sm" id="musicFolder" data-i18n-attr="placeholder:music.folder.placeholder" placeholder="/Users/moi/Musique" />
+            <div class="form-text" id="musicInfo">—</div>
+            <div class="form-text" data-i18n="music.folder.hint">Sans dossier, l'app joue les ambiances livrées selon le type choisi.</div>
+
+            <label class="form-label mt-3" for="styleNote" data-i18n="sources.style">Consigne de style</label>
+            <textarea class="form-control form-control-sm" id="styleNote" rows="2" data-i18n-attr="placeholder:sources.style.placeholder" placeholder="Ton radio, phrases courtes…"></textarea>
+
+            <hr />
+            <label class="form-label" data-i18n="sources.feeds">Flux RSS suivis</label>
+            <div class="feed-list" id="feedList"></div>
+            <div class="row g-2 mt-2">
+              <div class="col-5"><input class="form-control form-control-sm" id="customFeedLabel" data-i18n-attr="placeholder:sources.feedName" placeholder="Nom" /></div>
+              <div class="col-7"><input class="form-control form-control-sm" id="customFeedUrl" data-i18n-attr="placeholder:sources.feedUrl" placeholder="https://exemple.fr/rss" /></div>
+            </div>
+            <button class="btn btn-glass btn-sm mt-2" id="addFeedBtn" type="button"><i class="bi bi-plus-lg"></i> <span data-i18n="sources.feedAdd">Ajouter le flux</span></button>
+            <div class="form-text" id="customFeedList"></div>
+
+            <hr />
+            <label class="form-label" data-i18n="sources.themes">Thèmes prédéfinis</label>
+            <input type="search" class="form-control form-control-sm mb-2" id="themeSearch" data-i18n-attr="placeholder:sources.themes.placeholder" placeholder="filtrer : ia, épidémie, fin du monde…" />
+            <div class="theme-catalog" id="themeCatalog"></div>
+
+            <hr />
+            <label class="form-label" data-i18n="sources.chips">Sujets (chips)</label>
+            <div class="chips" id="chipEditor"></div>
+            <div class="input-group input-group-sm mt-2">
+              <input class="form-control" id="newChip" data-i18n-attr="placeholder:sources.chipAdd" placeholder="Ajouter un sujet…" />
+              <button class="btn btn-glass" id="addChipBtn" type="button"><i class="bi bi-plus-lg"></i></button>
+            </div>
+          </div>
+
+          <!-- Session -->
+          <div class="tab-pane fade" id="tab-usage">
+            <div class="usage-grid" id="usageGrid"></div>
+            <hr />
+            <div class="small text-secondary">
+              <p class="mb-2"><strong data-i18n="usage.cadence.title">Cadence &amp; pause.</strong> <span data-i18n="usage.cadence.body">Chaque bulletin est généré juste avant d'être diffusé. En pause, aucune nouvelle news n'est demandée : la file déjà préparée attend simplement la reprise.</span></p>
+              <p class="mb-2"><strong data-i18n="usage.cost.title">Coûts.</strong> <span data-i18n="usage.cost.body">Les tarifs viennent du catalogue OpenRouter en direct et sont normalisés pour 1 000 caractères. Les modèles facturés au token sont estimés (≈ 25 tokens d'audio par seconde).</span></p>
+              <p class="mb-0"><strong data-i18n="usage.sources.title">Sources.</strong> <span data-i18n="usage.sources.body">Contenus agrégés depuis des flux RSS publics pour un usage personnel.</span></p>
+            </div>
+            <button class="btn btn-outline-danger btn-sm mt-3" id="resetBtn" type="button"><i class="bi bi-trash3"></i> <span data-i18n="usage.reset">Vider la session</span></button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ─── Comparateur TTS ─── -->
+    <div class="modal fade" id="compareModal" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content glass">
+          <div class="modal-header">
+            <h5 class="modal-title"><i class="bi bi-bar-chart-line"></i> <span data-i18n="compare.title">Comparateur de synthèse vocale</span></h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" data-i18n-attr="aria-label:settings.close" aria-label="Fermer"></button>
+          </div>
+          <div class="modal-body">
+            <label class="form-label" for="compareText" data-i18n="compare.text">Phrase de test</label>
+            <textarea class="form-control form-control-sm" id="compareText" rows="2"></textarea>
+            <div class="d-flex gap-2 mt-2">
+              <button class="btn btn-primary btn-sm" id="compareRunBtn" type="button"><i class="bi bi-lightning-charge"></i> <span data-i18n="compare.run">Comparer</span></button>
+              <button class="btn btn-glass btn-sm" id="compareFromTranscript" type="button" data-i18n="compare.fromTranscript">Utiliser le transcript</button>
+            </div>
+            <div class="table-responsive mt-3">
+              <table class="table table-sm align-middle compare-table">
+                <thead>
+                  <tr><th data-i18n="compare.col.engine">Moteur</th><th data-i18n="compare.col.voice">Voix</th><th class="text-end" data-i18n="compare.col.latency">Latence</th><th class="text-end" data-i18n="compare.col.audio">Audio</th><th class="text-end" data-i18n="compare.col.cost">$/1k car.</th><th class="text-end" data-i18n="compare.col.listen">Écouter</th></tr>
+                </thead>
+                <tbody id="compareBody">
+                  <tr><td colspan="6" class="text-secondary" data-i18n="compare.idle">Cliquez sur « Comparer » pour lancer les synthèses.</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <p class="small text-secondary mb-0" id="compareNote"></p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="toast-container position-fixed bottom-0 end-0 p-3" id="toasts" aria-live="polite" aria-relevant="additions"></div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script type="module" src="/js/app.js"></script>
+  </body>
+</html>
